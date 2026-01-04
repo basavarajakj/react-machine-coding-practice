@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Loader from './components/Loader';
 import ProductCard, { type Product } from './components/ProductCard';
+import { useInfiniteScroll } from './hooks/useInfiniteScroll';
 
-const LIMIT = 10;
+const LIMIT = 4;
 
 function App() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -10,7 +11,8 @@ function App() {
   const [loading, setLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
-  const observeRef = useRef<IntersectionObserver | null>(null);
+  // STEP01:create a ref to store observers
+  // const observeRef = useRef<IntersectionObserver | null>(null);
 
   const fetchProducts = useCallback(async (): Promise<void> => {
     if (loading || !hasMore) return;
@@ -33,28 +35,36 @@ function App() {
   }, [loading, hasMore, page]);
 
   // Intersection observers
-  const lastProductRef = useCallback(
-    (node: HTMLDivElement | null): void => {
-      if (loading) return;
+  // const lastProductRef = useCallback(
+  //   (node: HTMLDivElement | null): void => {
+  //     if (loading) return;
 
-      if (observeRef.current) observeRef.current.disconnect();
+  //     if (observeRef.current) observeRef.current.disconnect();
+  //     // create new intersection observer to check visibility of element or intersection of element
+  //     observeRef.current = new IntersectionObserver(
+  //       (entries) => {
+  //         // If element is visible and hasMore element
+  //         if (entries[0].isIntersecting && hasMore) {
+  //           fetchProducts();
+  //         }
+  //       },
+  //       {
+  //         root: null,
+  //         rootMargin: '200px', // preload before reaching bottom
+  //         threshold: 0,
+  //       }
+  //     );
+  //     if (node) observeRef.current.observe(node);
+  //   },
+  //   [fetchProducts, loading, hasMore]
+  // );
 
-      observeRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasMore) {
-            fetchProducts();
-          }
-        },
-        {
-          root: null,
-          rootMargin: '200px', // preload before reaching bottom
-          threshold: 0,
-        }
-      );
-      if (node) observeRef.current.observe(node);
-    },
-    [fetchProducts, loading, hasMore]
-  );
+  // Custom hook
+  const { bottomRef } = useInfiniteScroll({
+    loading,
+    hasMore,
+    onLoadMore: fetchProducts,
+  });
 
   useEffect(() => {
     // only fetch initial page on mount; subsequent pages are
@@ -76,9 +86,11 @@ function App() {
         {products.map((product, index) => {
           if (index === products.length - 1) {
             return (
+              // STEP02 - Attach the ref to element
               <div
                 key={product.id}
-                ref={lastProductRef}
+                // ref={lastProductRef}
+                ref={bottomRef}
               >
                 <ProductCard
                   product={product}
